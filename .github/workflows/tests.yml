@@ -1,0 +1,39 @@
+name: Run Tests
+
+# 1.When should pipeline be activated
+on: [push, pull_request]
+
+jobs:
+  # 2. WHERE should it work? (A fresh Ubuntu machine)
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 3. WHAT should it do? (Step-by-step)
+      
+      # Step A: Copy your code from GitHub onto the robot's computer
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create temporary .env file
+        run: |
+          echo "DATABASE_URL=postgresql+asyncpg://ayzz:yourpassword@db:5432/fastapi" >> .env
+          echo "POSTGRES_USER=ayzz" >> .env
+          echo "POSTGRES_PASSWORD=yourpassword" >> .env
+          echo "POSTGRES_DB=fastapi" >> .env
+
+      # Step B: Start your Docker containers (just like you do locally)
+      - name: Start Docker Compose
+        run: docker-compose up --build -d
+
+      # Step C: Wait for the database to be ready (it takes a few seconds to boot)
+      - name: Wait for DB
+        run: sleep 10
+
+      # Step D: Create the test database (the manual step you usually do)
+      - name: Create Test DB
+        run: docker-compose exec -T db psql -U ayzz -d fastapi -c "CREATE DATABASE fastapi_test;"
+
+      # Step E: Run the tests!
+      - name: Run Pytest
+        run: docker-compose exec -T api pytest -v
