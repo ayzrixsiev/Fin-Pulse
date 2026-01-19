@@ -24,7 +24,7 @@ jobs:
 
       # Step B: Start your Docker containers (just like you do locally)
       - name: Start Docker Compose
-        run: docker-compose up --build -d
+        run: docker compose up --build -d
 
       # Step C: Wait for the database to be ready (it takes a few seconds to boot)
       - name: Wait for DB
@@ -32,8 +32,8 @@ jobs:
 
       # Step D: Create the test database (the manual step you usually do)
       - name: Create Test DB
-        run: docker-compose exec -T db psql -U ayzz -d fastapi -c "CREATE DATABASE fastapi_test;"
+        run: docker compose exec -T db psql -U ayzz -d fastapi -c "CREATE DATABASE fastapi_test;"
 
       # Step E: Run the tests!
       - name: Run Pytest
-        run: docker-compose exec -T api pytest -v
+        run: docker compose exec -T api pytest -v
