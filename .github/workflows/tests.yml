@@ -1,20 +1,19 @@
 name: Run Tests
 
-# 1.When should pipeline be activated
+# 1. When should pipeline be activated
 on: [push, pull_request]
 
 jobs:
-  # 2. WHERE should it work? (A fresh Ubuntu machine)
   test:
+    # 2. WHERE should it work? (A fresh Ubuntu machine)
     runs-on: ubuntu-latest
 
     steps:
-      # 3. WHAT should it do? (Step-by-step)
-      
       # Step A: Copy your code from GitHub onto the robot's computer
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # Step B: Create a temporary .env file for the containers
       - name: Create temporary .env file
         run: |
           echo "DATABASE_URL=postgresql+asyncpg://ayzz:yourpassword@db:5432/fastapi" >> .env
@@ -22,23 +21,33 @@ jobs:
           echo "POSTGRES_PASSWORD=password123" >> .env
           echo "POSTGRES_DB=fastapi" >> .env
 
-      # Step B: Start your Docker containers (just like you do locally)
-      - name: Start Docker Compose
-        run: docker compose up db
+      # Step C: Start ONLY the Database first
+      - name: Start Database
+        run: docker compose up -d db
 
-      # Step C: Wait for the database to be ready (it takes a few seconds to boot)
-      - name: Wait for DB
-        run: sleep 30
+      # Step D: Wait for the Database to be "Ready for connections"
+      - name: Wait for Database
+        run: |
+          until docker compose exec -T db pg_isready -U ayzz; do
+            echo "Waiting for postgres..."
+            sleep 2
+          done
 
-      # Step D: Create the test database (the manual step you usually do)
-      - name: Create Test DB
-        run: docker compose exec -T db psql -U ayzz -d fastapi -c "CREATE DATABASE fastapi_test;"
+      # Step E: Create the test DB and start the API with a fresh build
+      - name: Setup and Start API
+        run: |
+          docker compose exec -T db psql -U ayzz -d fastapi -c "CREATE DATABASE fastapi_test;"
+          docker compose up --build -d api
 
-      # Debug state
-      - name: Check Container Logs
-        if: failure()
-        run: docker compose logs
+      # Step F: Give the API a few seconds to initialize its connection
+      - name: Wait for API
+        run: sleep 5
 
-      # Step E: Run the tests!
+      # Step G: Run the tests!
       - name: Run Pytest
         run: docker compose exec -T api pytest -v
+
+      # Step H: If anything fails, show us the logs so we can debug
+      - name: Check Container Logs on Failure
+        if: failure()
+        run: docker compose logs
