@@ -25,7 +25,7 @@ class Anime(Base):
     )
 
 
-class Users(Base):
+class User(Base):
     __tablename__ = "users_table"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -35,3 +35,4 @@ class Users(Base):
     created_at = Column(
         TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
     )
+    anime_items = relationaship("Anime", backref="owner", cascade="all, delete-orphan")

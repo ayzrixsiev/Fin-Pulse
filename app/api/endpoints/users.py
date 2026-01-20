@@ -21,7 +21,7 @@ db_dep = Annotated[AsyncSession, Depends(get_db)]
 )
 async def sign_up(user: schemas.CreateUser, db: db_dep):
     # Validate whether a user already exists
-    query = select(models.Users).where(models.Users.email == user.email)
+    query = select(models.User).where(models.User.email == user.email)
     result = await db.execute(query)
     db_user = result.scalars().first()
 
@@ -33,7 +33,7 @@ async def sign_up(user: schemas.CreateUser, db: db_dep):
     # Hash the password and add new user to the db
     try:
         hashed_pwd = hash_password(user.password)
-        new_user = models.Users(email=user.email, password=hashed_pwd, role=user.role)
+        new_user = models.User(email=user.email, password=hashed_pwd, role=user.role)
         db.add(new_user)
         await db.commit()
         await db.refresh(new_user)
@@ -50,7 +50,7 @@ async def sign_up(user: schemas.CreateUser, db: db_dep):
 # Get user
 @router.get("/{user_id}", response_model=schemas.UserResponse)
 async def get_user(user_id: int, db: db_dep):
-    query = select(models.Users).where(models.Users.id == user_id)
+    query = select(models.User).where(models.User.id == user_id)
     result = await db.execute(query)
     db_user = result.scalars().first()
 
@@ -64,7 +64,7 @@ async def get_user(user_id: int, db: db_dep):
 @router.delete("/{user_id}")
 async def delete_user(
     user_id: int,
-    admin: Annotated[models.Users, Depends(validate_admin_role)],
+    admin: Annotated[models.User, Depends(validate_admin_role)],
     db: db_dep,
 ):
     # Prevent Admin Suicide :D
@@ -75,7 +75,7 @@ async def delete_user(
         )
 
     # Find the User
-    query = select(models.Users).where(models.Users.id == user_id)
+    query = select(models.User).where(models.User.id == user_id)
     result = await db.execute(query)
     user_to_delete = result.scalars().first()
 
