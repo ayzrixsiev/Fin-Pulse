@@ -35,4 +35,3 @@ class User(Base):
     created_at = Column(
         TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
     )
-    anime_items = relationaship("Anime", backref="owner", cascade="all, delete-orphan")
