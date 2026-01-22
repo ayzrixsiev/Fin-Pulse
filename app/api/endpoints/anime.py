@@ -1,9 +1,9 @@
 import logging
 from typing import List, Annotated
 from fastapi import APIRouter, HTTPException, status, Depends
-from httpx import get
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from app.core import schemas, models
 from app.core.database import get_db
@@ -24,20 +24,19 @@ db_dep = Annotated[AsyncSession, Depends(get_db)]
 async def get_anime_list(
     current_user: Annotated[models.User, Depends(get_current_user)], db: db_dep
 ):
-    try:
-        query = select(models.Anime).where(models.Anime.owner_id == current_user.id)
-        result = await db.execute(query)
-        db_list = (
-            result.scalars().all()
-        )  # Cast all the sql data into python object scalars() and save in the list all()
+    # Get the user and load his anime list
+    query = (
+        select(models.User)
+        .options(selectinload(models.User.anime_list))
+        .where(models.User.id == current_user.id)
+    )
+    result = await db.execute(query)
+    user = result.scalar_one_or_none()
 
-        return db_list
-    except Exception as error:
-        logging.error(f"Error fetching Anime List: {error}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to retrieve Anime List",
-        )
+    if not user:
+        raise HTTPException(404, "User not found")
+
+    return user.anime_list
 
 
 # Add an anime
@@ -52,8 +51,8 @@ async def add_anime(
     current_user: Annotated[models.User, Depends(get_current_user)],
 ):
     try:
-        new_anime_entry = models.Anime(**anime.model_dump(), owner_id=current_user.id)
-        db.add(new_anime_entry)  # Add to the session
+        new_anime_entry = models.Anime(**anime.model_dump())
+        current_user.anime_list.append(new_anime_entry)
         await db.commit()  # Commit to the DB
         await db.refresh(new_anime_entry)  # Refresh to get a generated ID by DB
 
@@ -76,28 +75,24 @@ async def update_anime_details(
     db: db_dep,
     current_user: Annotated[models.User, Depends(get_current_user)],
 ):
-    # Find anime and store it in db_anime
-    query = select(models.Anime).where(
-        models.Anime.id == anime_id, models.Anime.owner_id == current_user.id
-    )
-    result = await db.execute(query)
-    db_anime = result.scalars().first()
+    await db.refresh(current_user, attribute_names=["anime_list"])
 
-    if not db_anime:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Anime with id {anime_id} not found",
-        )
-    # Get the anime from a user convert it into dictionary and do not store empty fileds
-    updated_anime_dict = user_targeted_anime.model_dump(exclude_unset=True)
-
-    for key, value in updated_anime_dict.items():
-        setattr(db_anime, key, value)
     try:
-        db.add(db_anime)
+        anime = next(a for a in current_user.anime_list if a.id == anime_id)
+    except StopIteration:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Anime not found in your list")
+
+    # Get the anime from a user convert it into dictionary and do not store empty fileds
+    anime_dict = user_targeted_anime.model_dump(exclude_unset=True)
+
+    for key, value in anime_dict.items():
+        setattr(anime, key, value)
+
+    try:
+        db.add(anime)
         await db.commit()
-        await db.refresh(db_anime)
-        return db_anime
+        await db.refresh(anime)
+        return anime
     except Exception as error:
         await db.rollback()
         logging.error(f"Failed to commit a change: {error}")
@@ -113,25 +108,10 @@ async def delete_anime(
     db: db_dep,
     current_user: Annotated[models.User, Depends(get_current_user)],
 ):
-    # Find and save the targeted anime
-    query = select(models.Anime).where(
-        models.Anime.id == anime_id, models.Anime.owner_id == current_user.id
-    )
-    result = await db.execute(query)
-    db_anime = result.scalars().first()
-
-    if not db_anime:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Anime not found"
-        )
     try:
-        await db.delete(db_anime)
+        anime = next(a for a in current_user.anime_list if a.id == anime_id)
+        current_user.anime_list.remove(anime)
         await db.commit()
-        return {"message": f"Successfully deleted anime with ID {anime_id}"}
-    except Exception as error:
-        await db.rollback()
-        logging.error(f"Delete error: {error}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to delete an anime with id {anime_id}",
-        )
+        return {"message": f"Deleted anime {anime_id}"}
+    except StopIteration:
+        raise HTTPException(404, "Anime not found")
