@@ -13,7 +13,7 @@ router = APIRouter(prefix="/profile", tags=["Users"])
 db_dep = Annotated[AsyncSession, Depends(get_db)]
 
 
-# Sign up as a user
+# Sign up
 @router.post(
     "/signup",
     response_model=schemas.UserResponse,
@@ -61,6 +61,7 @@ async def get_user(user_id: int, db: db_dep):
     return db_user
 
 
+# Get user's stats
 @router.get("/stats")
 async def get_user_stats(
     current_user: Annotated[models.User, Depends(get_current_user)], db: db_dep
@@ -98,6 +99,7 @@ async def get_user_stats(
     }
 
 
+# Delete user (ad admin)
 @router.delete("/{user_id}")
 async def delete_user(
     user_id: int,
