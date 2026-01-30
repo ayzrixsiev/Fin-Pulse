@@ -1,8 +1,8 @@
-# Ani-mind
+# FlowMind
 
-**Ani-mind** is a modern, containerized backend API designed to help users build and manage personal anime watchlists while discovering new titles that match their tastes.  
+**FlowMind** is a modern, containerized backend API designed to help users ingest, process, and gain insights from their personal financial data.  
 
-Through thoughtful data collection (titles, ratings, genres, status) and intelligent recommendations, it aims to make finding enjoyable anime effortless and personalized.
+Through secure transaction logging, automated ETL pipelines, analytical modeling, and intelligent pattern detection, it turns raw financial logs into clear, actionable understanding of spending, trends, and opportunities.
 
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat&logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?style=flat&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
@@ -16,10 +16,10 @@ Through thoughtful data collection (titles, ratings, genres, status) and intelli
 ## Current Capabilities
 
 - Secure user authentication & role-based access (JWT, regular users + admin)
-- Personal anime list management (title, rating 0–10, watching status, genres)
+- Personal transaction logging (description, amount, date, category, type: income/expense)
 - Ownership rules — users can only view/edit/delete their own entries
-- User statistics endpoint (total watched, average rating, top genres)
-- Admin user deletion endpoint
+- Financial statistics endpoint (total spend/income, averages, category breakdowns, monthly trends)
+- Admin user management endpoint
 - Fully asynchronous PostgreSQL integration (SQLAlchemy 2.0)
 - Database schema migrations (Alembic)
 - Comprehensive automated testing suite
@@ -31,19 +31,21 @@ Through thoughtful data collection (titles, ratings, genres, status) and intelli
 
 ## Technology Roadmap
 
-- External anime metadata integration (Jikan / MyAnimeList API)
-- Content-based recommendation engine (genre similarity + embeddings)
+- Transaction data ingestion from CSV/JSON or external APIs (Plaid sandbox, bank exports)
+- Automated ETL pipelines for categorization, cleaning, and aggregation (Prefect / Airflow)
+- Analytical schema & materialized views for fast queries (monthly aggregates, trends)
+- Anomaly detection & spending pattern insights (scikit-learn)
 - Model experiment tracking & versioning (MLflow)
 - Production model serving (BentoML / KServe)
-- Model performance & data drift monitoring (Evidently AI)
+- Performance monitoring & data drift detection (Evidently AI)
 - Advanced orchestration & GitOps (Kubernetes, ArgoCD / Flux)
 
 ## Quick Start
 
 ```bash
 # Clone repository
-git clone https://github.com/ayzrixsiev/ani-mind.git
-cd ani-mind
+git clone https://github.com/ayzrixsiev/flowmind.git
+cd flowmind
 
 # Copy environment file
 cp .env.example .env
@@ -55,4 +57,4 @@ docker compose up -d --build
 docker compose exec api alembic upgrade head
 
 # Open interactive API documentation
-# http://localhost:8000/docs
+# → http://localhost:8000/docs
