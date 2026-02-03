@@ -141,9 +141,9 @@ def parse_amount(amount_str: str) -> Optional[Decimal]:
         - "100.50 USD" → Decimal('100.50')
 
     Why Decimal instead of float?
-        💰 Money needs precision - float has rounding errors
-        🏦 Banking requires exact calculations
-        📊 Reporting must be accurate
+        Money needs precision - float has rounding errors
+        Banking requires exact calculations
+        Reporting must be accurate
 
     Args:
         amount_str: Raw amount string
@@ -227,9 +227,9 @@ def normalize_merchant_name(merchant: Optional[str]) -> Optional[str]:
         - "  MAKRO  " → "Makro" (remove whitespace)
 
     Why normalize?
-        📊 Better spend analysis (Makro appears once, not 5 times)
-        🔍 Easier searching
-        📈 Accurate category assignment
+        Better spend analysis (Makro appears once, not 5 times)
+        Easier searching
+        Accurate category assignment
 
     Args:
         merchant: Raw merchant name
