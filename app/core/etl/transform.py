@@ -33,79 +33,46 @@ from sqlalchemy import select, update
 from app.core import models
 
 
-# ============================================================================
-# STEP 1: CLEAN AND STANDARDIZE DATES
-# ============================================================================
+def normalize_date(date: any) -> Optional[date]:
 
-
-def parse_uzbek_date(date_str: str) -> Optional[date]:
-    """
-    Parse various Uzbek date formats to standard date object.
-
-    Handles:
-        - "15.01.2025" (Uzbek bank format)
-        - "15/01/2025"
-        - "2025-01-15" (ISO standard)
-        - "15-01-2025"
-        - "15 Jan 2025"
-        - Unix timestamps (from APIs)
-
-    Why so many formats?
-        Uzbek banks use DD.MM.YYYY
-        International banks use YYYY-MM-DD
-        APIs use Unix timestamps
-        Manual uploads might use anything
-
-    Args:
-        date_str: Raw date string from source
-
-    Returns:
-        datetime.date object or None if parsing fails
-
-    Examples:
-        "15.01.2025" → datetime.date(2025, 1, 15)
-        "1673750400" → datetime.date(2023, 1, 15)  # Unix timestamp
-    """
-    if not date_str:
+    # Check if we got anything
+    if not date:
         return None
 
-    # Remove whitespace and common separators
+    # Clean white spaces and common separators
     date_str = str(date_str).strip()
 
-    # Format patterns to try (most common first)
+    # Create common patterns
     formats = [
-        "%d.%m.%Y",  # 15.01.2025 (Uzbek banks)
-        "%d/%m/%Y",  # 15/01/2025
-        "%d-%m-%Y",  # 15-01-2025
-        "%Y-%m-%d",  # 2025-01-15 (ISO)
-        "%d %b %Y",  # 15 Jan 2025
-        "%d %B %Y",  # 15 January 2025
+        "%d.%m.%Y",
+        "%d/%m/%Y",
+        "%d-%m-%Y",
+        "%Y-%m-%d",
+        "%d %b %Y",
+        "%d %B %Y",
     ]
 
-    # Try string formats first
+    # Find the format, convert, convert datetime and then get date only
     for fmt in formats:
         try:
             return datetime.strptime(date_str, fmt).date()
         except ValueError:
             continue
 
-    # Try Unix timestamp (API data)
+    # If in case it is not a simple date, use more advanced paring mechanism
     try:
-        # Handle both seconds and milliseconds
         timestamp = float(date_str)
-        if timestamp > 1e10:  # Milliseconds
+        if timestamp > 1e10:
             timestamp /= 1000
         return datetime.fromtimestamp(timestamp).date()
     except (ValueError, OSError):
         pass
 
-    # Try to extract year-month-day from messy strings
-    # Example: "Transaction date: 15.01.2025" → extract the date part
     date_pattern = r"(\d{1,4}[.\-/]\d{1,2}[.\-/]\d{2,4})"
     match = re.search(date_pattern, date_str)
     if match:
         extracted_date = match.group(1)
-        return parse_uzbek_date(extracted_date)  # Recursive call with cleaner date
+        return normalize_date(extracted_date)
 
     return None
 
