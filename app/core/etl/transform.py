@@ -1,5 +1,5 @@
 import re
-from typing import Dict, Any, Optional, List, Tuple
+from typing import Dict, Any, Optional
 from datetime import datetime, date
 from decimal import Decimal, InvalidOperation
 
