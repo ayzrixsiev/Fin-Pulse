@@ -191,21 +191,7 @@ async def validate_transaction_data(
 
 
 async def validate_user_data(user_id: int, db: AsyncSession) -> Dict[str, Any]:
-    """
-    Validate all data for a user.
 
-    This runs comprehensive checks on:
-    - All transactions
-    - Account balances
-    - Data consistency
-
-    Args:
-        user_id: User to validate
-        db: Database session
-
-    Returns:
-        Comprehensive validation report
-    """
     # Get all user's transactions
     stmt = select(models.Transaction).where(models.Transaction.owner_id == user_id)
     result = await db.execute(stmt)
@@ -262,11 +248,6 @@ async def validate_user_data(user_id: int, db: AsyncSession) -> Dict[str, Any]:
         f"🔍 Validation complete: {report['valid_transactions']}/{report['total_transactions']} valid"
     )
     return report
-
-
-# ============================================================================
-# STEP 4: MAIN LOADING FUNCTIONS
-# ============================================================================
 
 
 async def load_processed_data(user_id: int, db: AsyncSession) -> Dict[str, Any]:
