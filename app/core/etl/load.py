@@ -110,39 +110,10 @@ async def create_performance_indexes(db: AsyncSession) -> bool:
         return False
 
 
-# ============================================================================
-# STEP 3: DATA VALIDATION AND INTEGRITY
-# ============================================================================
-
-
 async def validate_transaction_data(
     transaction_id: int, db: AsyncSession
 ) -> Dict[str, Any]:
-    """
-    Validate a single transaction for data integrity.
 
-    What we check:
-        ✅ Amount is not null and is valid Decimal
-        ✅ Date is valid and not in the distant future
-        ✅ Owner exists and is active
-        ✅ Account (if specified) belongs to owner
-        ✅ Category is in allowed list
-        ✅ No duplicate hashes
-
-    Args:
-        transaction_id: Transaction to validate
-        db: Database session
-
-    Returns:
-        Validation result with any errors found
-
-    Example:
-        {
-            "valid": True,
-            "errors": [],
-            "warnings": []
-        }
-    """
     # Get the transaction with related data
     stmt = (
         select(models.Transaction)
@@ -162,7 +133,7 @@ async def validate_transaction_data(
     errors = []
     warnings = []
 
-    # === VALIDATION CHECKS ===
+    # VALIDATION CHECKS
 
     # 1. Amount validation
     if not transaction.amount:
@@ -174,7 +145,7 @@ async def validate_transaction_data(
     if not transaction.created_at:
         errors.append("Date cannot be null")
     else:
-        # Check if date is reasonable (not in far future or past)
+        # Check whether the date is valid, in the future or too old
         today = date.today()
         txn_date = transaction.created_at.date()
 
