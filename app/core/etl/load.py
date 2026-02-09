@@ -245,30 +245,13 @@ async def validate_user_data(user_id: int, db: AsyncSession) -> Dict[str, Any]:
             )
 
     print(
-        f"🔍 Validation complete: {report['valid_transactions']}/{report['total_transactions']} valid"
+        f"Validation complete: {report['valid_transactions']}/{report['total_transactions']} valid"
     )
     return report
 
 
 async def load_processed_data(user_id: int, db: AsyncSession) -> Dict[str, Any]:
-    """
-    Main loading function - optimize storage after transformation.
 
-    This is called after transform.py has cleaned the data.
-
-    Process:
-        1. Update all account balances
-        2. Ensure performance indexes exist
-        3. Validate data integrity
-        4. Mark loading as complete
-
-    Args:
-        user_id: User whose data to load
-        db: Database session
-
-    Returns:
-        Loading statistics
-    """
     stats = {
         "accounts_updated": 0,
         "accounts_failed": 0,
@@ -276,7 +259,7 @@ async def load_processed_data(user_id: int, db: AsyncSession) -> Dict[str, Any]:
         "issues_found": [],
     }
 
-    print(f"📦 Loading processed data for user {user_id}...")
+    print(f"Loading processed data for user {user_id}...")
 
     # === STEP 1: Update Account Balances ===
     balance_stats = await update_all_account_balances(user_id, db)
@@ -300,7 +283,7 @@ async def load_processed_data(user_id: int, db: AsyncSession) -> Dict[str, Any]:
     # - Average transaction amount
     # etc.
 
-    print(f"✅ Loading complete: {stats['accounts_updated']} balances updated")
+    print(f"Loading complete: {stats['accounts_updated']} balances updated")
     return stats
 
 
