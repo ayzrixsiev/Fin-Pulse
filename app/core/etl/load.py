@@ -1,9 +1,9 @@
 from typing import Dict, Any, List, Optional
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, func
+from sqlalchemy import select, update, func, text
 from sqlalchemy.orm import selectinload
 
 from app.core import models
@@ -161,7 +161,7 @@ async def create_performance_indexes(db: AsyncSession) -> bool:
         ]
 
         for index_sql in index_patterns:
-            await db.execute(index_sql)
+            await db.execute(text(index_sql))
 
         await db.commit()
         print("Performance indexes created successfully")
@@ -544,7 +544,9 @@ async def get_user_account_summary(
     for account in accounts:
         # Count transactions in last 30 days using a safe timedelta window
         thirty_days_ago = (
-            datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            datetime.now(timezone.utc).replace(
+                hour=0, minute=0, second=0, microsecond=0
+            )
             - timedelta(days=30)
         )
 

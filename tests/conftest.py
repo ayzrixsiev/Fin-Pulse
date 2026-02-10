@@ -98,19 +98,3 @@ async def auth_headers_user(test_user):
 async def auth_headers_admin(test_admin):
     token = create_access_token({"user_id": test_admin.id})
     return {"Authorization": f"Bearer {token}"}
-
-
-# Anime
-@pytest_asyncio.fixture(scope="function")
-async def test_anime(db_session: AsyncSession, test_user):
-    anime = models.Anime(
-        title=f"Test Anime {uuid.uuid4().hex[:8]}",
-        rating=8,
-        status="Watching",
-        genres=["Action", "Adventure"],
-        owner_id=test_user.id,
-    )
-    db_session.add(anime)
-    await db_session.commit()
-    await db_session.refresh(anime)
-    return anime

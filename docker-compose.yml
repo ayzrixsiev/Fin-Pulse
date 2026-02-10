@@ -7,9 +7,9 @@ services:
     environment: # set up credentials and db name
       - POSTGRES_USER=ayzz
       - POSTGRES_PASSWORD=password123
-      - POSTGRES_DB=fastapi
+      - POSTGRES_DB=finpulse
     ports:
-      - "5433:5432" # (Map) Computer Port 5432 -> Docker Port 5432.
+      - "5433:5432" # (Map) Computer Port 5433 -> Docker Port 5432.
   api: # name of the second container: api code
     build: . # "Look at my Dockerfile to build this box."
     ports:
@@ -19,7 +19,7 @@ services:
     env_file: # read secure data and inject them into container's memory
       - .env
     environment: # override db url because in .evn it has localhost but in docker it is db
-      - DATABASE_URL=postgresql+psycopg://ayzz:password123@db:5432/fastapi
+      - DATABASE_URL=postgresql+psycopg://ayzz:password123@db:5432/finpulse
     depends_on: # run the api only after DB is activated
       - db
 

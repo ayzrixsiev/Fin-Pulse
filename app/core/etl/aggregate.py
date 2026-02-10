@@ -582,6 +582,12 @@ def generate_category_recommendation(
         ],
     )
 
+    # Avoid division by zero if recommended budget is zero or missing
+    if recommended_budget <= 0:
+        return (
+            f"Review your {category} spending. Set a budget target to track progress."
+        )
+
     # Pick the most relevant recommendation based on how much over budget
     over_percentage = ((current_amount - recommended_budget) / recommended_budget) * 100
 
