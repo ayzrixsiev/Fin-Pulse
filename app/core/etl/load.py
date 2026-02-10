@@ -250,6 +250,114 @@ async def validate_user_data(user_id: int, db: AsyncSession) -> Dict[str, Any]:
     return report
 
 
+async def update_user_stats(user_id: int, db: AsyncSession) -> Dict[str, Any]:
+
+    try:
+        # Total transactions (processed)
+        total_txn_stmt = select(func.count(models.Transaction.id)).where(
+            models.Transaction.owner_id == user_id,
+            models.Transaction.processed == True,
+        )
+        total_txn_result = await db.execute(total_txn_stmt)
+        total_transactions = int(total_txn_result.scalar() or 0)
+
+        # Total income and expense (processed)
+        income_stmt = select(
+            func.coalesce(func.sum(models.Transaction.amount), 0)
+        ).where(
+            models.Transaction.owner_id == user_id,
+            models.Transaction.processed == True,
+            models.Transaction.amount > 0,
+        )
+        expense_stmt = select(
+            func.coalesce(func.sum(models.Transaction.amount), 0)
+        ).where(
+            models.Transaction.owner_id == user_id,
+            models.Transaction.processed == True,
+            models.Transaction.amount < 0,
+        )
+
+        income_result = await db.execute(income_stmt)
+        expense_result = await db.execute(expense_stmt)
+
+        total_income = Decimal(str(income_result.scalar() or 0))
+        total_expense = Decimal(str(expense_result.scalar() or 0))
+
+        # Average transaction amount (absolute value)
+        avg_stmt = select(
+            func.coalesce(func.avg(func.abs(models.Transaction.amount)), 0)
+        ).where(
+            models.Transaction.owner_id == user_id,
+            models.Transaction.processed == True,
+        )
+        avg_result = await db.execute(avg_stmt)
+        avg_transaction_amount = Decimal(str(avg_result.scalar() or 0))
+
+        # Spending by category (expenses only)
+        category_stmt = select(
+            models.Transaction.category,
+            func.coalesce(func.sum(models.Transaction.amount), 0).label("total_amount"),
+        ).where(
+            models.Transaction.owner_id == user_id,
+            models.Transaction.processed == True,
+            models.Transaction.amount < 0,
+        ).group_by(models.Transaction.category)
+
+        category_result = await db.execute(category_stmt)
+        spent_by_category = {}
+
+        for row in category_result.all():
+            if row.category:
+                spent_by_category[row.category] = abs(float(row.total_amount or 0))
+
+        # Upsert user stats
+        existing_stmt = select(models.UserStats).where(
+            models.UserStats.user_id == user_id
+        )
+        existing_result = await db.execute(existing_stmt)
+        existing = existing_result.scalar_one_or_none()
+
+        if existing:
+            existing.total_transactions = total_transactions
+            existing.total_income = total_income
+            existing.total_expense = abs(total_expense)
+            existing.avg_transaction_amount = avg_transaction_amount
+            existing.spent_by_category = spent_by_category
+        else:
+            db.add(
+                models.UserStats(
+                    user_id=user_id,
+                    total_transactions=total_transactions,
+                    total_income=total_income,
+                    total_expense=abs(total_expense),
+                    avg_transaction_amount=avg_transaction_amount,
+                    spent_by_category=spent_by_category,
+                )
+            )
+
+        await db.commit()
+
+        return {
+            "total_transactions": total_transactions,
+            "total_income": float(total_income),
+            "total_expense": float(abs(total_expense)),
+            "avg_transaction_amount": float(avg_transaction_amount),
+            "spent_by_category": spent_by_category,
+        }
+
+    except Exception as e:
+        print(f"Error updating user stats: {e}")
+        await db.rollback()
+        return {
+            "total_transactions": 0,
+            "total_income": 0,
+            "total_expense": 0,
+            "avg_transaction_amount": 0,
+            "spent_by_category": {},
+            "error": str(e),
+        }
+
+
 async def load_processed_data(user_id: int, db: AsyncSession) -> Dict[str, Any]:
 
     stats = {
@@ -277,11 +385,8 @@ async def load_processed_data(user_id: int, db: AsyncSession) -> Dict[str, Any]:
         stats["issues_found"] = validation_report["common_errors"]
 
     # === STEP 4: Update User Stats ===
-    # You could add a user_stats table here to track:
-    # - Total transactions
-    # - Total spent by category
-    # - Average transaction amount
-    # etc.
+    user_stats = await update_user_stats(user_id, db)
+    stats["user_stats"] = user_stats
 
     print(f"Loading complete: {stats['accounts_updated']} balances updated")
     return stats
