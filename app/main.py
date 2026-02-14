@@ -27,7 +27,7 @@ async def lifespan(app: FastAPI):
     await engine.dispose()
 
 
-app = FastAPI(title="Anime ML Analytics API", lifespan=lifespan)
+app = FastAPI(title="Finance AI analytics", lifespan=lifespan)
 
 # Include the master router containing all our endpoints
 app.include_router(api_router)
