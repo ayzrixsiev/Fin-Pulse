@@ -9,36 +9,13 @@ from sqlalchemy import select, update
 from app.core import models
 
 
-# -----------------------------------------------------------------------------
-# TRANSFORM MODULE
-# Purpose: clean, normalize, and categorize raw transactions.
-# Why: reliable analytics depend on consistent, validated transaction fields.
-# -----------------------------------------------------------------------------
-
-
 def parse_date(date: any) -> Optional[date]:
-    """
-    Parse a variety of date formats into a `date` object.
-    Why: input dates vary across sources and must be normalized for queries.
 
-    Args:
-        date: Raw date input (string, number, or datetime-like).
-
-    Returns:
-        Parsed date or None if parsing fails.
-
-    Example:
-        parsed = parse_date("15.01.2025")
-    """
-
-    # Check if we got anything
     if not date:
         return None
 
-    # Clean white spaces and common separators
     date_str = str(date).strip()
 
-    # Create common patterns
     formats = [
         "%d.%m.%Y",
         "%d/%m/%Y",
@@ -48,14 +25,12 @@ def parse_date(date: any) -> Optional[date]:
         "%d %B %Y",
     ]
 
-    # Find the format, convert, convert datetime and then get date only
     for fmt in formats:
         try:
             return datetime.strptime(date_str, fmt).date()
         except ValueError:
             continue
 
-    # If in case it is not a simple date, use more advanced paring mechanism
     try:
         timestamp = float(date_str)
         if timestamp > 1e10:
@@ -74,32 +49,14 @@ def parse_date(date: any) -> Optional[date]:
 
 
 def clean_transaction_date(transaction_date: Any) -> Optional[date]:
-    """
-    Main function to clean transaction dates.
-    This is the public interface that other modules will call.
-    Why: provides a single safe date-cleaning entry point for the pipeline.
-    """
     if not transaction_date:
-        # Default to today if missing
+
         return date.today()
 
     return parse_date(str(transaction_date))
 
 
 def parse_amount(value: Any) -> Optional[Decimal]:
-    """
-    Parse a raw amount string into a Decimal, handling separators and currency text.
-    Why: amounts come in many formats and must be numeric for calculations.
-
-    Args:
-        value: Raw amount (string, int, float).
-
-    Returns:
-        Decimal amount or None if parsing fails.
-
-    Example:
-        amt = parse_amount("1,500,000 UZS")
-    """
 
     if not value:
         return None
@@ -135,11 +92,7 @@ def parse_amount(value: Any) -> Optional[Decimal]:
 
 
 def clean_transaction_amount(amount: Any) -> Optional[Decimal]:
-    """
-    Main function to clean transaction amounts.
-    Returns positive Decimal for income, negative for expenses.
-    Why: downstream logic assumes numeric amounts with correct sign.
-    """
+
     if amount is None:
         return None
 
@@ -148,72 +101,48 @@ def clean_transaction_amount(amount: Any) -> Optional[Decimal]:
 
 
 def normalize_merchant_name(merchant: Optional[str]) -> Optional[str]:
-    """
-    Normalize merchant names to reduce duplicates and improve analytics.
-    Why: consistent merchant names improve grouping and insights.
-
-    Args:
-        merchant: Raw merchant string.
-
-    Returns:
-        Normalized merchant name or None.
-
-    Example:
-        norm = normalize_merchant_name("MAKRO TASHKENT")
-    """
 
     if not merchant:
         return None
 
     merchant = str(merchant).strip()
 
-    # Common Uzbek brand mappings
     brand_mappings = {
-        # Supermarkets
         r"makro.*tashkent": "Makro",
         r"makro.*yunusobod": "Makro",
         r"korzinka.*": "Korzinka",
         r"market.*": "Market",
         r"avicenna.*": "Avicenna",
-        # Food & Restaurants
         r"starbucks.*": "Starbucks",
         r"evos.*": "Evos",
         r"cbon.*": "Cbon",
         r"texas.*": "Texas Chicken",
         r"kfc.*": "KFC",
-        # Services
         r"olcha.*": "Olcha",
         r"uzum.*": "Uzum",
         r"click.*": "Click",
         r"payme.*": "Payme",
-        # Banks
         r"uzum.*bank": "Uzum Bank",
         r"kapital.*bank": "Kapital Bank",
         r"agrobank": "Agrobank",
         r"hamkorbank": "Hamkorbank",
-        # Transport
         r"yandex.*taxi": "Yandex Taxi",
         r"taxi.*": "Taxi",
         r"metro.*": "Metro",
     }
 
-    # Convert to lowercase for matching
     merchant_lower = merchant.lower()
 
     for pattern, replacement in brand_mappings.items():
         if re.search(pattern, merchant_lower):
             return replacement
 
-    # General cleanup
-    # Remove common suffixes
     suffixes = ["tashkent", "yunusobod", "restaurant", "cafe", "llc", "inc"]
     for suffix in suffixes:
         merchant = re.sub(rf"\s*{suffix}.*$", "", merchant, flags=re.IGNORECASE)
 
-    # Remove extra spaces and capitalize
     merchant = re.sub(r"\s+", " ", merchant).strip()
 
-    # Capitalize properly (not ALL CAPS)
     if len(merchant) > 0:
         merchant = merchant[0].upper() + merchant[1:].lower()
 
@@ -223,36 +152,17 @@ def normalize_merchant_name(merchant: Optional[str]) -> Optional[str]:
 def categorize_transaction(
     merchant: Optional[str], description: Optional[str], amount: Optional[Decimal]
 ) -> Optional[str]:
-    """
-    Assign a category based on merchant, description, and amount direction.
-    Why: categories power dashboards, budgets, and user insights.
 
-    Args:
-        merchant: Normalized merchant name.
-        description: Transaction description.
-        amount: Transaction amount (positive income, negative expense).
-
-    Returns:
-        Category name string.
-
-    Example:
-        cat = categorize_transaction("Makro", "card payment", Decimal("-50000"))
-    """
-
-    # Combine search text
     search_text = f"{merchant or ''} {description or ''}".lower()
 
-    # Income categories (positive amounts)
     if amount and amount > 0:
         if any(word in search_text for word in ["salary", "зарплата", "заработок"]):
             return "Salary & Income"
         if any(word in search_text for word in ["transfer", "перевод", "возврат"]):
             return "Transfer & Income"
 
-    # Expense categories (negative amounts or small positives which might be refunds)
     if not amount or amount < 0 or (amount > 0 and amount < 100000):
 
-        # Food & Restaurants
         food_keywords = [
             "starbucks",
             "evos",
@@ -273,7 +183,6 @@ def categorize_transaction(
         if any(word in search_text for word in food_keywords):
             return "Food & Restaurants"
 
-        # Transport
         transport_keywords = [
             "taxi",
             "yandex",
@@ -288,7 +197,6 @@ def categorize_transaction(
         if any(word in search_text for word in transport_keywords):
             return "Transport & Taxi"
 
-        # Shopping & Retail
         shopping_keywords = [
             "makro",
             "korzinka",
@@ -305,7 +213,6 @@ def categorize_transaction(
         if any(word in search_text for word in shopping_keywords):
             return "Shopping & Retail"
 
-        # Health & Medicine
         health_keywords = [
             "pharmacy",
             "аптека",
@@ -321,7 +228,6 @@ def categorize_transaction(
         if any(word in search_text for word in health_keywords):
             return "Health & Medicine"
 
-        # Bills & Utilities
         bills_keywords = [
             "electricity",
             "gas",
@@ -340,7 +246,6 @@ def categorize_transaction(
         if any(word in search_text for word in bills_keywords):
             return "Bills & Utilities"
 
-        # Entertainment & Leisure
         entertainment_keywords = [
             "cinema",
             "movie",
@@ -356,7 +261,6 @@ def categorize_transaction(
         if any(word in search_text for word in entertainment_keywords):
             return "Entertainment & Leisure"
 
-        # Education
         education_keywords = [
             "school",
             "university",
@@ -372,7 +276,6 @@ def categorize_transaction(
         if any(word in search_text for word in education_keywords):
             return "Education"
 
-        # Banks & Financial Services
         bank_keywords = [
             "bank",
             "комиссия",
@@ -389,27 +292,12 @@ def categorize_transaction(
     return "Other"
 
 
-# Orchestration
 async def transform_transaction(
     transaction: models.Transaction, db: AsyncSession
 ) -> bool:
-    """
-    Clean and normalize a single raw transaction and mark it as processed.
-    Why: this is the core step that converts raw data into analysis-ready data.
-
-    Args:
-        transaction: Raw transaction ORM object.
-        db: Async database session.
-
-    Returns:
-        True if successfully transformed, False otherwise.
-
-    Example:
-        ok = await transform_transaction(txn, db)
-    """
 
     try:
-        # Get raw data (what we originally received)
+
         raw_data = transaction.raw_payload or {}
 
         raw_date = raw_data.get("date") or raw_data.get("Date") or raw_data.get("Дата")
@@ -467,11 +355,10 @@ async def transform_transaction(
             "merchant": cleaned_merchant,
             "category": cleaned_category,
             "description": raw_description,
-            "processed": True,  # Mark as cleaned
+            "processed": True,
             "updated_at": datetime.now(),
         }
 
-        # Update in database
         stmt = (
             update(models.Transaction)
             .where(models.Transaction.id == transaction.id)
@@ -492,27 +379,10 @@ async def transform_transaction(
         return False
 
 
-# Call orchestration
 async def transform_all_unprocessed(
     user_id: int, db: AsyncSession, batch_size: int = 100
 ) -> Dict[str, int]:
-    """
-    Transform all unprocessed transactions for a user.
-    Why: batch processing keeps the pipeline efficient and consistent.
 
-    Args:
-        user_id: User whose transactions will be transformed.
-        db: Async database session.
-        batch_size: Reserved for future batching optimizations.
-
-    Returns:
-        Stats dict with totals and processed counts.
-
-    Example:
-        stats = await transform_all_unprocessed(user_id, db)
-    """
-
-    # Get all unprocessed transactions for this user
     stmt = (
         select(models.Transaction)
         .where(
@@ -540,24 +410,8 @@ async def transform_all_unprocessed(
     return stats
 
 
-# Reprocess a certain transaction, useful for debugging
 async def reprocess_transaction(transaction_id: int, db: AsyncSession) -> bool:
-    """
-    Reprocess a specific transaction for debugging or corrections.
-    Why: enables fixes when parsing rules or categories change.
 
-    Args:
-        transaction_id: Transaction ID to reprocess.
-        db: Async database session.
-
-    Returns:
-        True if reprocessing succeeds, False otherwise.
-
-    Example:
-        ok = await reprocess_transaction(123, db)
-    """
-
-    # Get the transaction
     stmt = select(models.Transaction).where(models.Transaction.id == transaction_id)
     result = await db.execute(stmt)
     transaction = result.scalar_one_or_none()
@@ -566,7 +420,6 @@ async def reprocess_transaction(transaction_id: int, db: AsyncSession) -> bool:
         print(f"Transaction {transaction_id} not found")
         return False
 
-    # Mark as unprocessed first
     stmt = (
         update(models.Transaction)
         .where(models.Transaction.id == transaction_id)
@@ -576,5 +429,4 @@ async def reprocess_transaction(transaction_id: int, db: AsyncSession) -> bool:
     await db.execute(stmt)
     await db.commit()
 
-    # Now transform it
     return await transform_transaction(transaction, db)

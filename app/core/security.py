@@ -12,16 +12,16 @@ from app.core import models
 from app.core.config import settings
 
 db_dep = Annotated[AsyncSession, Depends(get_db)]
-# Hash mechanism
+
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
-# Hash the password
+
 def hash_password(password: str):
     return pwd_context.hash(password)
 
 
-# Verify the password
+
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
@@ -41,11 +41,11 @@ def create_access_token(data: dict):
     return encoded_jwt
 
 
-# tokenUrl="profile/login" if you don't have a token yet, go to this address to get one
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="profile/login")
 
 
-# Decode the token and see who is the user
+
 async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], db: db_dep):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -54,7 +54,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], db: db
     )
 
     try:
-        # Decode the "Gibberish"
+
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
@@ -70,7 +70,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], db: db
     except Exception:
         raise credentials_exception
 
-    # Go to the Database and find this specific person
+
     query = select(models.User).where(models.User.id == user_id)
     result = await db.execute(query)
     user = result.scalars().first()
@@ -89,5 +89,5 @@ async def validate_admin_role(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You do not have enough privileges (Admin only)",
         )
-    # If user admin, we will return him
+
     return current_user

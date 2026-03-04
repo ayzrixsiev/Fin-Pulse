@@ -1,4 +1,3 @@
-# app/core/routers/transactions.py
 import logging
 from typing import List, Annotated
 from fastapi import APIRouter, HTTPException, status, Depends, UploadFile, File
@@ -13,7 +12,6 @@ from app.core.etl.ingest import ingest_from_csv
 router = APIRouter(prefix="/transactions", tags=["Transactions"])
 
 
-# Default parameter must be first in FastAPI
 def db_dep():
     return Depends(get_db)
 
@@ -47,13 +45,9 @@ async def upload_transactions_csv(
     file: UploadFile = File(...),
     db: AsyncSession = db_dep(),
 ):
-    """
-    Upload CSV of transactions; file processing happens in app.core.etl.ingest.
-    Note: this only ingests raw transactions. For the full ETL flow, use /etl/run-csv.
-    """
     try:
         content = await file.read()
-        # Pass content (bytes) to your ETL helper that parses CSV and inserts into raw table
+
         user_id = getattr(current_user, "id", None)
         if user_id is None:
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, "User not found")

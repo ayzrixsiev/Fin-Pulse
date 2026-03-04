@@ -16,7 +16,7 @@ from sqlalchemy.orm import relationship
 from app.core.database import Base
 
 
-# User
+
 class User(Base):
     __tablename__ = "users_table"
 
@@ -32,7 +32,7 @@ class User(Base):
         server_default=func.now(),
     )
 
-    # Relationships
+
     accounts = relationship(
         "Account",
         back_populates="owner",
@@ -56,7 +56,7 @@ class User(Base):
     )
 
 
-# Financial source
+
 class Account(Base):
 
     __tablename__ = "accounts"
@@ -93,7 +93,7 @@ class Account(Base):
         onupdate=func.now(),
     )
 
-    # Relationships
+
     owner = relationship("User", back_populates="accounts")
     transactions = relationship(
         "Transaction",
@@ -138,7 +138,7 @@ class Transaction(Base):
 
     external_id = Column(String(255), index=True)
 
-    # Timestamps
+
     created_at = Column(
         TIMESTAMP(timezone=True),
         nullable=False,

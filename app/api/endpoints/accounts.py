@@ -1,4 +1,4 @@
-# app/core/routers/accounts.py
+
 import logging
 from typing import List, Annotated
 from fastapi import APIRouter, HTTPException, status, Depends

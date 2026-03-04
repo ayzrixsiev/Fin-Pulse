@@ -13,10 +13,10 @@ def run_migrations():
     alembic.command.upgrade(alembic_cfg, "head")
 
 
-# Close the engine once everything is done and close all the sessions
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Apply any pending migrations automatically when the app starts
+
     try:
         await asyncio.to_thread(run_migrations)
         print("Migrations applied successfully (or already up-to-date)")
@@ -29,7 +29,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Finance AI analytics", lifespan=lifespan)
 
-# Include the master router containing all our endpoints
+
 app.include_router(api_router)
 
 

@@ -6,9 +6,9 @@ from enum import Enum
 from pydantic import BaseModel, ConfigDict, Field, EmailStr
 
 
-# =========================
-# Enums
-# =========================
+
+
+
 class UserRole(str, Enum):
     ADMIN = "admin"
     USER = "user"
@@ -22,9 +22,9 @@ class AccountProvider(str, Enum):
     CLICK = "Click"
 
 
-# =========================
-# USER
-# =========================
+
+
+
 class UserBase(BaseModel):
     email: EmailStr
     role: UserRole = UserRole.USER
@@ -47,9 +47,9 @@ class UserResponse(UserBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-# =========================
-# ACCOUNT
-# =========================
+
+
+
 class AccountBase(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     provider: AccountProvider
@@ -73,9 +73,9 @@ class AccountResponse(AccountBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-# =========================
-# TRANSACTION
-# =========================
+
+
+
 class TransactionBase(BaseModel):
     amount: Decimal
     currency: str = "UZS"
@@ -97,9 +97,9 @@ class TransactionResponse(TransactionBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-# =========================
-# ANALYTICS / ETL
-# =========================
+
+
+
 class UserStatsResponse(BaseModel):
     total_transactions: int
     total_income: float
